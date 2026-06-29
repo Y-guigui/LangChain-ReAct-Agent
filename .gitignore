@@ -1,0 +1,9 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+.env
+
+# 向量数据库及本地数据缓存（根据实际情况调整）
+.chroma/
+data/raw/
