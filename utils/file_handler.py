@@ -1,3 +1,8 @@
+"""
+文件处理工具
+为整个工程提供统一的文件处理
+"""
+
 import os,hashlib
 from utils.logger_handler import logger
 
