@@ -8,3 +8,5 @@ __pycache__/
 .chroma/
 data/raw/
 logs/
+chroma_db
+md5.txt
