@@ -131,8 +131,8 @@ async def _sse_event_generator(
         agent = get_agent()
         full_content = ""
 
-        # 发送会话 ID
-        yield f"event: session\ndata: {json.dumps({'session_id': session_id})}\n\n"
+        # 发送会话 ID（作为普通 data 帧，便于前端解析）
+        yield f"data: {json.dumps({'session_id': session_id})}\n\n"
 
         for chunk in agent.execute_stream(query, messages=messages, session_id=session_id):
             if chunk:
@@ -142,12 +142,12 @@ async def _sse_event_generator(
         # 保存完整回复到会话
         _save_response(session_id, full_content)
 
-        # 发送结束信号
-        yield f"event: done\ndata: {json.dumps({'status': 'completed'})}\n\n"
+        # 发送结束信号（作为普通 data 帧，前端通过 reader done 感知结束）
+        yield f"data: {json.dumps({'status': 'completed'})}\n\n"
 
     except Exception as e:
         logger.error(f"[SSE] 流式输出异常: {str(e)}")
-        yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
+        yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
 
 @router.post("/chat/stream", tags=["聊天"])
