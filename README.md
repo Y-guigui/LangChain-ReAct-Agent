@@ -63,13 +63,13 @@
 ### 2. Agent 思考
 展示 Agent 在处理复杂问题时的内部推理路径（Thought）与最终回答（Answer）。
 
-#### 问题 1*
+#### 问题 1
 **🧠 思考过程 (Thought Process)：**
 ![Q1-思考](./images/Q1-思考.png) 
 **💬 最终回答 (Final Answer)：**
 ![Q1-回答](./images/Q1-回答.png) 
 
-#### 问题 2*
+#### 问题 2
 **🧠 思考过程 (Thought Process)：**
 ![Q2-思考](./images/Q2-思考.png) 
 **💬 最终回答 (Final Answer)：**
