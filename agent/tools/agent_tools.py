@@ -31,9 +31,10 @@ def search_memory(query: str) -> str:
     results = memory_store.search(MemoryQuery(query=query, top_k=5))
     if not results:
         return "未找到相关记忆。"
-    lines = []
-    for i, mem in enumerate(results, 1):
-        lines.append(f"{i}. [{mem.category}] {mem.content} (重要度: {mem.importance})")
+    # 返回简洁格式，由 Agent 自行组织成自然语言
+    lines = ["检索到的记忆："]
+    for mem in results:
+        lines.append(f"[{mem.category}] {mem.content}")
     return "\n".join(lines)
 
 
