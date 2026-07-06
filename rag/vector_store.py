@@ -16,7 +16,7 @@ from utils.config_handler import chroma_conf
 from utils.path_tool import get_abs_path
 from model.factory import embed_model
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from utils.file_handler import txt_loader, pdf_loader, listdir_with_allowed_type, get_file_md5_hex
+from utils.file_handler import txt_loader, pdf_loader, md_loader, listdir_with_allowed_type, get_file_md5_hex
 from utils.logger_handler import logger
 
 
@@ -68,6 +68,9 @@ class VectorStoreService:
             if read_path.endswith("pdf"):
                 return pdf_loader(read_path)
 
+            if read_path.endswith("md"):
+                return md_loader(read_path)
+
             return []
 
         allowed_files_path: list[str] = listdir_with_allowed_type(
@@ -107,6 +110,106 @@ class VectorStoreService:
                 # exc_info为True会记录详细的报错堆栈，如果为False仅记录报错信息本身
                 logger.error(f"[加载知识库]{path}加载失败：{str(e)}", exc_info=True)
                 continue
+
+    def add_single_document(self, file_path: str) -> dict:
+        """
+        向量化单个文件（用于文件上传）
+
+        :param file_path: 文件的绝对路径
+        :return: {success, filename, chunk_count, error}
+        """
+        filename = os.path.basename(file_path)
+        try:
+            documents = self._get_file_documents(file_path)
+            if not documents:
+                return {"success": False, "filename": filename, "error": "文件内容为空"}
+
+            split_documents = self.spliter.split_documents(documents)
+            if not split_documents:
+                return {"success": False, "filename": filename, "error": "分片后无有效内容"}
+
+            self.vector_store.add_documents(split_documents)
+            logger.info(f"[知识库] 已添加: {filename} ({len(split_documents)} 个分片)")
+            return {"success": True, "filename": filename, "chunk_count": len(split_documents)}
+        except Exception as e:
+            logger.error(f"[知识库] 添加失败 {filename}: {str(e)}")
+            return {"success": False, "filename": filename, "error": str(e)}
+
+    def remove_document(self, filename: str) -> dict:
+        """
+        从向量库中删除指定文件的文档
+
+        :param filename: 文件名
+        :return: {success, deleted_count}
+        """
+        try:
+            collection = self.vector_store._collection
+            results = collection.get(include=["metadatas"])
+            ids_to_delete = []
+
+            if results and results.get("ids"):
+                for i, meta in enumerate(results.get("metadatas", [])):
+                    if meta and meta.get("source", "").endswith(filename):
+                        ids_to_delete.append(results["ids"][i])
+
+            if ids_to_delete:
+                collection.delete(ids=ids_to_delete)
+                logger.info(f"[知识库] 已删除: {filename} ({len(ids_to_delete)} 个分片)")
+                return {"success": True, "deleted_count": len(ids_to_delete)}
+            else:
+                return {"success": True, "deleted_count": 0, "message": "未找到匹配的文档"}
+        except Exception as e:
+            logger.error(f"[知识库] 删除失败 {filename}: {str(e)}")
+            return {"success": False, "error": str(e)}
+
+    def get_stats(self) -> dict:
+        """获取向量库统计信息"""
+        try:
+            collection = self.vector_store._collection
+            count = collection.count()
+            return {
+                "total_chunks": count,
+                "collection_name": chroma_conf["collection_name"],
+                "persist_directory": chroma_conf["persist_directory"],
+            }
+        except Exception as e:
+            return {"error": str(e)}
+
+    def search(self, query: str, top_k: int = None) -> list[Document]:
+        """语义搜索"""
+        if top_k is None:
+            top_k = chroma_conf["k"]
+        retriever = self.vector_store.as_retriever(search_kwargs={"k": top_k})
+        return retriever.invoke(query)
+
+    def _get_file_documents(self, read_path: str):
+        """获取文件文档（与 load_documents 内部函数一致）"""
+        if read_path.endswith("txt"):
+            return txt_loader(read_path)
+        if read_path.endswith("pdf"):
+            return pdf_loader(read_path)
+        if read_path.endswith("md"):
+            return md_loader(read_path)
+        return []
+
+    def list_documents(self) -> list[dict]:
+        """列出向量库中的所有文档文件"""
+        try:
+            collection = self.vector_store._collection
+            results = collection.get(include=["metadatas"])
+            files = {}
+            if results and results.get("metadatas"):
+                for meta in results.get("metadatas", []):
+                    if meta and "source" in meta:
+                        source = meta["source"]
+                        fname = os.path.basename(source)
+                        if fname not in files:
+                            files[fname] = {"filename": fname, "source": source, "chunk_count": 0}
+                        files[fname]["chunk_count"] += 1
+            return sorted(files.values(), key=lambda x: x["filename"])
+        except Exception as e:
+            logger.error(f"[知识库] 列举文档失败: {str(e)}")
+            return []
 
 if __name__ == '__main__':
     vs = VectorStoreService()

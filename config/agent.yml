@@ -1,0 +1,2 @@
+chat_model_name: qwen3.7-max
+external_data_path: data/external/records.csv

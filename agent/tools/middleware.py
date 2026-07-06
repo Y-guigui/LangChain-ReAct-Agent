@@ -11,21 +11,16 @@ from utils.logger_handler import logger
 
 @wrap_tool_call
 def monitor_tool(
-        # 请求的数据封装
         request: ToolCallRequest,
-        # 执行的函数本身
         handler: Callable[[ToolCallRequest], ToolMessage | Command],
-) -> ToolMessage | Command:             # 工具执行的监控
+) -> ToolMessage | Command:
+    """工具执行监控中间件：记录工具调用"""
     logger.info(f"[tool monitor]执行工具：{request.tool_call['name']}")
     logger.info(f"[tool monitor]传入参数：{request.tool_call['args']}")
 
     try:
         result = handler(request)
         logger.info(f"[tool monitor]工具{request.tool_call['name']}调用成功")
-
-        if request.tool_call['name'] == "fill_context_for_report":
-            request.runtime.context["report"] = True
-
         return result
     except Exception as e:
         logger.error(f"工具{request.tool_call['name']}调用失败，原因：{str(e)}")

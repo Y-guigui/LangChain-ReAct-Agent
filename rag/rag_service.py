@@ -39,6 +39,10 @@ class RagSummarizeService:
     def rag_summarize(self, query: str)->str:
         context_docs = self.retriever_docs(query)
 
+        if not context_docs:
+            logger.info(f"[RAG] 知识库未检索到相关内容，直接调用 LLM 回答: {query[:50]}...")
+            return self.model.invoke(f"请回答以下问题：{query}。如果知识库中未找到相关内容，请直接基于你的知识回答。").content
+
         context = ""
         counter = 0
         for doc in context_docs:
